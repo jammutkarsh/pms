@@ -24,6 +24,8 @@ package cmd
 import (
 	"os"
 
+	"github.com/JammUtkarsh/pms/charm"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +41,13 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		m := charm.NewModel()
+		p := tea.NewProgram(m)
+		if err := p.Start(); err != nil {
+			cobra.CheckErr(err)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
