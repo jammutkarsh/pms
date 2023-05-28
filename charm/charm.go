@@ -1,6 +1,8 @@
 package charm
 
 import (
+	"sort"
+
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -46,6 +48,9 @@ func (m *Model) InitList(width, height int) {
 	// reading the projects from file
 	projects := filterProjects()
 	projectList := make([]list.Item, len(projects))
+	sort.SliceStable(projects, func(i, j int) bool {
+		return projects[i].LastRecentlyUsedRank < projects[j].LastRecentlyUsedRank
+	})
 	for i, project := range projects {
 		projectList[i] = list.Item(project)
 	}
