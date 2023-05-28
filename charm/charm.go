@@ -46,7 +46,7 @@ func (m *Model) InitList(width, height int) {
 	m.list.Title = "Projects"
 
 	// reading the projects from file
-	projects := filterProjects()
+	projects := getProjects()
 	projectList := make([]list.Item, len(projects))
 	sort.SliceStable(projects, func(i, j int) bool {
 		return projects[i].LastRecentlyUsedRank < projects[j].LastRecentlyUsedRank
@@ -74,5 +74,5 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return m.list.View()
+	return m.list.View() + "\n"
 }

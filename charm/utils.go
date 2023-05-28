@@ -7,17 +7,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configFile = "SampleConfig.json"
+const configFile = ".pms.json"
 
 type config struct {
-	DefaultEditor string `json:"defaultEditor"`
-	Projects []Project `json:"projects"`
+	DefaultEditor string    `json:"defaultEditor"`
+	Projects      []Project `json:"projects"`
 }
 
-
-func readMetaData() (c config) {
-	// home, err := os.UserHomeDir()
-	home, err := os.Getwd() // for testing
+// readConfig returns go struct of config file at ~/.pms.json
+func readConfig() (c config) {
+	home, err := os.UserHomeDir()
 	if err != nil {
 		cobra.CheckErr(err)
 		return
@@ -38,12 +37,14 @@ func readMetaData() (c config) {
 	return c
 }
 
-func filterProjects() []Project{
-	c:= readMetaData()
+// getProjects returns all projects
+func getProjects() []Project {
+	c := readConfig()
 	return c.Projects
 }
 
+// getDefaultEditor returns default editor
 func getDefaultEditor() string {
-	c := readMetaData()
+	c := readConfig()
 	return c.DefaultEditor
 }
