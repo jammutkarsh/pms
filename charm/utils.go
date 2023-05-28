@@ -3,6 +3,7 @@ package charm
 import (
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -40,6 +41,7 @@ func readConfig() (c config) {
 // getProjects returns all projects
 func getProjects() []Project {
 	c := readConfig()
+	hideHomeDir(&c)
 	return c.Projects
 }
 
@@ -47,4 +49,14 @@ func getProjects() []Project {
 func getDefaultEditor() string {
 	c := readConfig()
 	return c.DefaultEditor
+}
+
+func hideHomeDir(c *config) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		cobra.CheckErr(err)
+	}
+	for i, project := range c.Projects {
+		c.Projects[i].ProjectPath = strings.Replace(project.ProjectPath, home, "~", 1)
+	}
 }
