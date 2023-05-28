@@ -5,23 +5,28 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var defaultEditor string 
+var defaultEditor string
 
 /*Custom Type*/
 type Project struct {
-	LastRecentlyUsedRank int `json:"Rank"` // will be used for sorting projects (based on LRU algorithm from CPU ; )
-	ProjectName string `json:"Name"`
-	ProjectPath string `json:"Path"`
+	LastRecentlyUsedRank int    `json:"Rank"` // will be used for sorting projects (based on LRU algorithm from CPU ; )
+	ProjectName          string `json:"Name"`
+	ProjectPath          string `json:"Path"`
 }
 
 // FilterValue allows us to filter the options by name.
 func (p Project) FilterValue() string { return p.ProjectName }
 
-// Name returns the name of the project.
-func (p Project) Name() string { return p.ProjectName }
+/*
+Implements DefaultItem interface to render the list items.
+https://pkg.go.dev/github.com/charmbracelet/bubbles@v0.15.0/list#DefaultItem
+*/
 
-// Path returns the path of the project.
-func (p Project) Path() string { return p.ProjectPath }
+// Title returns the name of the project.
+func (p Project) Title() string { return p.ProjectName }
+
+// Description returns the path of the project.
+func (p Project) Description() string { return p.ProjectPath }
 
 /*Main Model*/
 type Model struct {
@@ -42,7 +47,7 @@ func (m *Model) InitList(width, height int) {
 	projects := filterProjects()
 	projectList := make([]list.Item, len(projects))
 	for i, project := range projects {
-	    projectList[i] = list.Item(project)
+		projectList[i] = list.Item(project)
 	}
 	// setting list items
 	m.list.SetItems(projectList)
