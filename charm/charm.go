@@ -32,7 +32,8 @@ func (p Project) Description() string { return p.ProjectPath }
 
 /*Main Model*/
 type Model struct {
-	list list.Model
+	list     list.Model
+	quitting bool
 }
 
 // NewModel returns a new Model with some sane defaults.
@@ -67,6 +68,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.InitList(msg.Width, msg.Height)
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			m.quitting = true
+			return m, tea.Quit
+		}
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
@@ -74,5 +81,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	if m.quitting {
+		return ""
+	}
 	return m.list.View() + "\n"
 }
