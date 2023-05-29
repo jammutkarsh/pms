@@ -1,13 +1,13 @@
 package charm
 
 import (
+	"os/exec"
 	"sort"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 )
-
-var defaultEditor string
 
 /*Custom Type*/
 type Project struct {
@@ -41,6 +41,14 @@ func NewModel() *Model {
 	return &Model{}
 }
 
+func (m *Model) OpenInEditor() error {
+	selectedIProject := m.list.SelectedItem()
+	project := selectedIProject.(Project)
+	defaultEditor := getDefaultEditor()
+	cmd := exec.Command(defaultEditor, project.ProjectPath)
+	return cmd.Start()
+}
+
 func (m *Model) InitList(width, height int) {
 	// setting the default values
 	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
@@ -72,6 +80,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			m.quitting = true
+			return m, tea.Quit
+		case "enter", " ":
+			if err := m.OpenInEditor(); err != nil {
+				cobra.CheckErr(err)
+			}
 			return m, tea.Quit
 		}
 	}
