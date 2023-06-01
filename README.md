@@ -11,7 +11,7 @@
 - [x] `/`: Search Project
 - [x] `esc` or `q` : Quit TUI
 - [x] `enter` or `spacebar`: open the project in default editor
-- [ ] `C`: change directory to the project
+- [ ] `C`: change directory to the project (Not possible due)
 
 ## CLI
 

@@ -93,6 +93,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View renders the list. 
 func (m Model) View() string {
 	if m.quitting {
 		return ""
