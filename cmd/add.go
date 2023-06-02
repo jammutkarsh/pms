@@ -4,6 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"os"
+
+	"github.com/JammUtkarsh/pms/charm"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +23,11 @@ If no argument is provided, the current directory will be added to the list.
   pms add '$GOPATH/src/github.com/username/project' **`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			// Return the current directory
+			wd, err := os.Getwd()
+			if err != nil {
+				cobra.CheckErr(err)
+			}
+			cobra.CheckErr(charm.WriteConfig([]byte(wd)))
 		} else if len(args) == 1 {
 			// User provides a path to the project; Could be relative path or absolute path
 		} else {

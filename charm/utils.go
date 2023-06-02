@@ -2,7 +2,10 @@ package charm
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -45,4 +48,35 @@ func (c *config) getProjects() []Project {
 // getDefaultEditor returns default editor
 func (c config) getDefaultEditor() string {
 	return c.DefaultEditor
+}
+
+
+func WriteConfig(path []byte) error {
+	cf := readConfig()
+	
+	length := len(cf.Projects)
+	name := strings.Split(string(path), "/")
+
+	var newProject Project = Project{
+		ProjectPath:           string(path),
+		ProjectName:           strings.Split(string(path), "/")[len(name)-1],
+		LastRecentlyUsedRank:  length + 1,
+	}
+	cf.Projects = append(cf.Projects, newProject)
+	sort.SliceStable(cf.Projects, func(i, j int) bool {
+		return cf.Projects[i].LastRecentlyUsedRank < cf.Projects[j].LastRecentlyUsedRank
+	})
+	byteData, err := json.MarshalIndent(cf, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	
+	file := home + "/" + configFile
+
+	return ioutil.WriteFile(file, byteData, 0777)
 }
