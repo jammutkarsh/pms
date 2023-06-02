@@ -43,8 +43,3 @@ func init() {
 	// is called directly, e.g.:
 	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
-
-func writeConfig([]byte) error {
-
-	return nil
-}

@@ -44,7 +44,10 @@ func NewModel() *Model {
 func (m *Model) OpenInEditor() error {
 	selectedIProject := m.list.SelectedItem()
 	project := selectedIProject.(Project)
-	defaultEditor := getDefaultEditor()
+	
+	cf := readConfig()
+	defaultEditor := cf.getDefaultEditor()
+	
 	cmd := exec.Command(defaultEditor, project.ProjectPath)
 	return cmd.Start()
 }
@@ -55,7 +58,9 @@ func (m *Model) InitList(width, height int) {
 	m.list.Title = "Projects"
 
 	// reading the projects from file
-	projects := getProjects()
+	cf := readConfig()
+	projects := cf.getProjects()
+	
 	projectList := make([]list.Item, len(projects))
 	sort.SliceStable(projects, func(i, j int) bool {
 		return projects[i].LastRecentlyUsedRank < projects[j].LastRecentlyUsedRank

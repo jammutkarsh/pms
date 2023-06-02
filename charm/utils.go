@@ -38,13 +38,11 @@ func readConfig() (c config) {
 }
 
 // getProjects returns all projects
-func getProjects() []Project {
-	c := readConfig()
+func (c *config) getProjects() []Project {
 	return c.Projects
 }
 
 // getDefaultEditor returns default editor
-func getDefaultEditor() string {
-	c := readConfig()
+func (c config) getDefaultEditor() string {
 	return c.DefaultEditor
 }
