@@ -41,17 +41,7 @@ func NewModel() *Model {
 	return &Model{}
 }
 
-func (m *Model) OpenInEditor() error {
-	selectedIProject := m.list.SelectedItem()
-	project := selectedIProject.(Project)
-	
-	cf := readConfig()
-	defaultEditor := cf.getDefaultEditor()
-	
-	cmd := exec.Command(defaultEditor, project.ProjectPath)
-	return cmd.Start()
-}
-
+// InitList initializes the list with the projects from the config file.
 func (m *Model) InitList(width, height int) {
 	// setting the default values
 	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
@@ -60,7 +50,7 @@ func (m *Model) InitList(width, height int) {
 	// reading the projects from file
 	cf := readConfig()
 	projects := cf.getProjects()
-	
+
 	projectList := make([]list.Item, len(projects))
 	sort.SliceStable(projects, func(i, j int) bool {
 		return projects[i].LastRecentlyUsedRank < projects[j].LastRecentlyUsedRank
@@ -77,6 +67,7 @@ func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
+// Update updates the model on an event like a key press. Also sets the TUI window size.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -99,10 +90,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View renders the list. 
+// View renders the list.
 func (m Model) View() string {
 	if m.quitting {
-		return ""
+		return "" // cleans the terminal on exit
 	}
 	return m.list.View() + "\n"
+}
+
+// OpenInEditor opens the selected project in the default editor.
+func (m *Model) OpenInEditor() error {
+	selectedIProject := m.list.SelectedItem()
+	project := selectedIProject.(Project)
+
+	cf := readConfig()
+	defaultEditor := cf.getDefaultEditor()
+
+	cmd := exec.Command(defaultEditor, project.ProjectPath)
+	return cmd.Start()
 }

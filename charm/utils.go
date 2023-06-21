@@ -50,17 +50,17 @@ func (c config) getDefaultEditor() string {
 	return c.DefaultEditor
 }
 
-
+// WriteConfig writes the config file at ~/.pms.json
 func WriteConfig(path []byte) error {
 	cf := readConfig()
-	
+
 	length := len(cf.Projects)
 	name := strings.Split(string(path), "/")
 
 	var newProject Project = Project{
-		ProjectPath:           string(path),
-		ProjectName:           strings.Split(string(path), "/")[len(name)-1],
-		LastRecentlyUsedRank:  length + 1,
+		ProjectPath:          string(path),
+		ProjectName:          strings.Split(string(path), string(os.PathSeparator))[len(name)-1],
+		LastRecentlyUsedRank: length + 1,
 	}
 	cf.Projects = append(cf.Projects, newProject)
 	sort.SliceStable(cf.Projects, func(i, j int) bool {
@@ -75,7 +75,7 @@ func WriteConfig(path []byte) error {
 	if err != nil {
 		return err
 	}
-	
+
 	file := home + "/" + configFile
 
 	return ioutil.WriteFile(file, byteData, 0777)

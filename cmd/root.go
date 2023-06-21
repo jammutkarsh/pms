@@ -36,7 +36,7 @@ var rootCmd = &cobra.Command{
 	Long: `PMS - Project Management System S̶y̶s̶t̶e̶m̶ Sucks
 
 A TUI/CLI utility to manage your projects.`,
-Example: `  pms
+	Example: `  pms
   pms --help
   pms --version
 `,
