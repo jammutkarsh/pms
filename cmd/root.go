@@ -24,7 +24,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/JammUtkarsh/pms/charm"
+	"github.com/JammUtkarsh/pms/utils"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +41,7 @@ A TUI/CLI utility to manage your projects.`,
   pms --version
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		m := charm.NewModel()
+		m := utils.NewModel()
 		p := tea.NewProgram(m)
 		if err := p.Start(); err != nil {
 			cobra.CheckErr(err)
