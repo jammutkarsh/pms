@@ -1,8 +1,7 @@
-package charm
+package utils
 
 import (
 	"os/exec"
-	"sort"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,9 +10,8 @@ import (
 
 /*Custom Type*/
 type Project struct {
-	LastRecentlyUsedRank int    `json:"Rank"` // will be used for sorting projects (based on LRU algorithm from CPU ; )
-	ProjectName          string `json:"Name"`
-	ProjectPath          string `json:"Path"`
+	ProjectName string `json:"Name"`
+	ProjectPath string `json:"Path"`
 }
 
 // FilterValue allows us to filter the options by name.
@@ -41,6 +39,10 @@ func NewModel() *Model {
 	return &Model{}
 }
 
+func (m *Model) Init() tea.Cmd {
+	return nil
+}
+
 // InitList initializes the list with the projects from the config file.
 func (m *Model) InitList(width, height int) {
 	// setting the default values
@@ -48,23 +50,15 @@ func (m *Model) InitList(width, height int) {
 	m.list.Title = "Projects"
 
 	// reading the projects from file
-	cf := readConfig()
-	projects := cf.getProjects()
+	projects := readConfig().getProjects()
 
 	projectList := make([]list.Item, len(projects))
-	sort.SliceStable(projects, func(i, j int) bool {
-		return projects[i].LastRecentlyUsedRank < projects[j].LastRecentlyUsedRank
-	})
 	for i, project := range projects {
 		projectList[i] = list.Item(project)
 	}
+
 	// setting list items
 	m.list.SetItems(projectList)
-}
-
-// Move utils.go functionnallity here.
-func (m *Model) Init() tea.Cmd {
-	return nil
 }
 
 // Update updates the model on an event like a key press. Also sets the TUI window size.
@@ -99,12 +93,11 @@ func (m Model) View() string {
 }
 
 // OpenInEditor opens the selected project in the default editor.
-func (m *Model) OpenInEditor() error {
+func (m Model) OpenInEditor() error {
 	selectedIProject := m.list.SelectedItem()
 	project := selectedIProject.(Project)
 
-	cf := readConfig()
-	defaultEditor := cf.getDefaultEditor()
+	defaultEditor := readConfig().getDefaultEditor()
 
 	cmd := exec.Command(defaultEditor, project.ProjectPath)
 	return cmd.Start()

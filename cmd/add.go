@@ -6,7 +6,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/JammUtkarsh/pms/charm"
+	"github.com/JammUtkarsh/pms/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +27,7 @@ If no argument is provided, the current directory will be added to the list.
 			if err != nil {
 				cobra.CheckErr(err)
 			}
-			cobra.CheckErr(charm.WriteConfig([]byte(wd)))
+			cobra.CheckErr(utils.AddProject([]byte(wd)))
 		} else if len(args) == 1 {
 			// User provides a path to the project; Could be relative path or absolute path
 		} else {
