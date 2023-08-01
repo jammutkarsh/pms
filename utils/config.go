@@ -18,7 +18,7 @@ func init() {
 	if _, err := os.Stat(ConfigPath()); os.IsNotExist(err) {
 		// Write default config
 		if _, err := os.Create(ConfigPath()); err == nil {
-			byteData, err := json.MarshalIndent(config{"code",[]Project{},}, "", "    ")
+			byteData, err := json.MarshalIndent(config{"code", []Project{}}, "", "    ")
 			if err != nil {
 				cobra.CheckErr(err)
 			}
@@ -63,14 +63,14 @@ func readConfig() (c config) {
 }
 
 // AddProject adds JSON representation of new project in ~/.pms.json
-func AddProject(workingPath []byte) error {
+func AddProject(workingPath string) error {
 	config := readConfig()
 
-	directories := strings.Split(string(workingPath), "/")
+	directories := strings.Split(workingPath, "/")
 
 	var newProject Project = Project{
-		ProjectName: strings.Split(string(workingPath), string(os.PathSeparator))[len(directories)-1],
-		ProjectPath: string(workingPath),
+		ProjectName: strings.Split(workingPath, string(os.PathSeparator))[len(directories)-1],
+		ProjectPath: workingPath,
 	}
 
 	config.Projects = append(config.Projects, newProject)
