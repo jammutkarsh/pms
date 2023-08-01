@@ -4,6 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"errors"
 	"os"
 
 	"github.com/JammUtkarsh/pms/utils"
@@ -27,12 +28,11 @@ If no argument is provided, the current directory will be added to the list.
 			if err != nil {
 				cobra.CheckErr(err)
 			}
-			cobra.CheckErr(utils.AddProject([]byte(wd)))
+			cobra.CheckErr(utils.AddProject(wd))
 		} else if len(args) == 1 {
-			// User provides a path to the project; Could be relative path or absolute path
+			pathResolver(args[0])
 		} else {
-			// Invalid number of arguments
-
+			cobra.CheckErr(errors.New("Too many arguments provided"))
 		}
 	},
 }
@@ -49,4 +49,19 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func pathResolver(path string) string {
+
+	switch {
+	case path[0] == '.' && len(path) == 1:
+		wd, err := os.Getwd()
+		if err != nil {
+			cobra.CheckErr(err)
+		}
+		cobra.CheckErr(utils.AddProject(wd))
+	default:
+		cobra.CheckErr(utils.AddProject(path))
+	}
+	return path
 }
