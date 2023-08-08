@@ -62,6 +62,24 @@ func readConfig() (c config) {
 	return c
 }
 
+// DeleteProjet deletes JSON representation of project from ~/.pms.json
+func DeleteProjet(projectPath string) error {
+	var updatedProjects []Project
+	currentProjects := readConfig().getProjects()
+	for _, project := range currentProjects {
+		if project.ProjectPath != projectPath {
+			updatedProjects = append(updatedProjects, project)
+		}
+	}
+	c := readConfig()
+	c.Projects = updatedProjects
+	byteData, err := json.MarshalIndent(c, "", "    ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(ConfigPath(), byteData, 0777)
+}
+
 // AddProject adds JSON representation of new project in ~/.pms.json
 func AddProject(workingPath string) error {
 	config := readConfig()
@@ -82,6 +100,7 @@ func AddProject(workingPath string) error {
 	return ioutil.WriteFile(ConfigPath(), byteData, 0777)
 }
 
+// ConfigPath returns the path of the config file
 func ConfigPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {

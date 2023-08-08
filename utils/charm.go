@@ -71,6 +71,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			m.quitting = true
 			return m, tea.Quit
+		case "d", "backspace", "delete":
+			if err := m.DeleteItem(); err != nil {
+				cobra.CheckErr(err)
+			}
+			m.quitting = true
+			return m, tea.Quit
 		case "enter", " ":
 			if err := m.OpenInEditor(); err != nil {
 				cobra.CheckErr(err)
@@ -101,4 +107,12 @@ func (m Model) OpenInEditor() error {
 
 	cmd := exec.Command(defaultEditor, project.ProjectPath)
 	return cmd.Start()
+}
+
+// DeleteItem deletes the selected project from the config file.
+func (m Model) DeleteItem() error {
+	selectedIProject := m.list.SelectedItem()
+	project := selectedIProject.(Project)
+
+	return DeleteProjet(project.ProjectPath)
 }
