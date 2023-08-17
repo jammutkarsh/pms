@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -22,7 +21,7 @@ func init() {
 			if err != nil {
 				cobra.CheckErr(err)
 			}
-			ioutil.WriteFile(ConfigPath(), byteData, 0777)
+			os.WriteFile(ConfigPath(), byteData, 0777)
 		} else {
 			cobra.CheckErr(err)
 		}
@@ -46,8 +45,8 @@ func (c config) getDefaultEditor() string {
 	return c.DefaultEditor
 }
 
-// readConfig returns go struct of config file at ~/.pms.json
-func readConfig() (c config) {
+// ReadConfig returns go struct of config file at ~/.pms.json
+func ReadConfig() (c config) {
 	configFile, err := os.Open(ConfigPath())
 	if err != nil {
 		cobra.CheckErr(err)
@@ -59,31 +58,67 @@ func readConfig() (c config) {
 		cobra.CheckErr(err)
 		return
 	}
+
 	return c
+}
+
+// UpdateProjectList writes JSON representation of projects to ~/.pms.json
+func UpdateProjectList(projectPath string) error {
+	var (
+		currentProjectIndex int
+		currentProject      Project
+	)
+	projects := ReadConfig().getProjects()
+
+	// finding the index of the selected project
+	for i, p := range projects {
+		if p.ProjectPath == projectPath {
+			currentProjectIndex = i
+			currentProject = p
+			break
+		}
+	}
+
+	// moving the selected project to the top of the list
+	for i := currentProjectIndex; i > 0; i-- {
+		projects[i] = projects[i-1]
+	}
+	projects[0] = currentProject
+
+	c := ReadConfig()
+	c.Projects = projects
+	byteData, err := json.MarshalIndent(c, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(ConfigPath(), byteData, 0777)
 }
 
 // DeleteProjet deletes JSON representation of project from ~/.pms.json
 func DeleteProjet(projectPath string) error {
 	var updatedProjects []Project
-	currentProjects := readConfig().getProjects()
+	currentProjects := ReadConfig().getProjects()
+
 	for _, project := range currentProjects {
 		if project.ProjectPath != projectPath {
 			updatedProjects = append(updatedProjects, project)
 		}
 	}
-	c := readConfig()
+
+	c := ReadConfig()
 	c.Projects = updatedProjects
 	byteData, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(ConfigPath(), byteData, 0777)
 }
 
 // AddProject adds JSON representation of new project in ~/.pms.json
 func AddProject(workingPath string) error {
-	config := readConfig()
-
+	c := ReadConfig()
 	directories := strings.Split(workingPath, "/")
 
 	var newProject Project = Project{
@@ -91,13 +126,13 @@ func AddProject(workingPath string) error {
 		ProjectPath: workingPath,
 	}
 
-	config.Projects = append(config.Projects, newProject)
-	byteData, err := json.MarshalIndent(config, "", "    ")
+	c.Projects = append(c.Projects, newProject)
+	byteData, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(ConfigPath(), byteData, 0777)
+	return os.WriteFile(ConfigPath(), byteData, 0777)
 }
 
 // ConfigPath returns the path of the config file
@@ -107,5 +142,6 @@ func ConfigPath() string {
 		cobra.CheckErr(err)
 		return ""
 	}
+
 	return home + "/" + configFile
 }

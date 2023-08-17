@@ -50,7 +50,7 @@ func (m *Model) InitList(width, height int) {
 	m.list.Title = "Projects"
 
 	// reading the projects from file
-	projects := readConfig().getProjects()
+	projects := ReadConfig().getProjects()
 
 	projectList := make([]list.Item, len(projects))
 	for i, project := range projects {
@@ -78,6 +78,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quitting = true
 			return m, tea.Quit
 		case "enter", " ":
+			if err := m.UpdateList(); err != nil {
+				cobra.CheckErr(err)
+			}
 			if err := m.OpenInEditor(); err != nil {
 				cobra.CheckErr(err)
 			}
@@ -103,7 +106,7 @@ func (m Model) OpenInEditor() error {
 	selectedIProject := m.list.SelectedItem()
 	project := selectedIProject.(Project)
 
-	defaultEditor := readConfig().getDefaultEditor()
+	defaultEditor := ReadConfig().getDefaultEditor()
 
 	cmd := exec.Command(defaultEditor, project.ProjectPath)
 	return cmd.Start()
@@ -115,4 +118,12 @@ func (m Model) DeleteItem() error {
 	project := selectedIProject.(Project)
 
 	return DeleteProjet(project.ProjectPath)
+}
+
+// UpdateList updates the list with the selected project on top.
+func (m Model) UpdateList() error {
+	selectedIProject := m.list.SelectedItem()
+	project := selectedIProject.(Project)
+
+	return UpdateProjectList(project.ProjectPath)
 }
