@@ -71,7 +71,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			m.quitting = true
 			return m, tea.Quit
-		case "d", "backspace", "delete":
+		case "backspace", "delete":
 			if err := m.DeleteItem(); err != nil {
 				cobra.CheckErr(err)
 			}

@@ -32,7 +32,7 @@ If no argument is provided, the current directory will be added to the list.
 		} else if len(args) == 1 {
 			pathResolver(args[0])
 		} else {
-			cobra.CheckErr(errors.New("Too many arguments provided"))
+			cobra.CheckErr(errors.New("too many arguments provided"))
 		}
 	},
 }
