@@ -119,7 +119,7 @@ func DeleteProjet(projectPath string) error {
 // AddProject adds JSON representation of new project in ~/.pms.json
 func AddProject(workingPath string) error {
 	c := ReadConfig()
-	directories := strings.Split(workingPath, "/")
+	directories := strings.Split(workingPath, string(os.PathSeparator))
 
 	var newProject Project = Project{
 		ProjectName: strings.Split(workingPath, string(os.PathSeparator))[len(directories)-1],
@@ -143,5 +143,5 @@ func ConfigPath() string {
 		return ""
 	}
 
-	return home + "/" + configFile
+	return home + string(os.PathSeparator) + configFile
 }
