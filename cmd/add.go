@@ -53,14 +53,16 @@ func init() {
 
 func pathResolver(path string) string {
 
+	wd, err := os.Getwd()
+	if err != nil {
+		cobra.CheckErr(err)
+	}
+
 	switch {
 	case path[0] == '.' && len(path) == 1:
-		wd, err := os.Getwd()
-		if err != nil {
-			cobra.CheckErr(err)
-		}
 		cobra.CheckErr(utils.AddProject(wd))
 	default:
+		path = wd + string(os.PathSeparator) + path
 		cobra.CheckErr(utils.AddProject(path))
 	}
 	return path
