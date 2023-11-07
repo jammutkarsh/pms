@@ -126,17 +126,12 @@ func AddProject(workingPath string) error {
 		ProjectPath: workingPath,
 	}
 
-	for _, p := range c.Projects {
-		if p.ProjectPath == newProject.ProjectPath {
-			return nil
-		}
-	}
-
 	c.Projects = append(c.Projects, newProject)
 	byteData, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(ConfigPath(), byteData, 0777)
 }
 
