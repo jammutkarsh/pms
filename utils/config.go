@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 
@@ -126,12 +127,17 @@ func AddProject(workingPath string) error {
 		ProjectPath: workingPath,
 	}
 
+	for _, p := range c.Projects {
+		if p.ProjectPath == newProject.ProjectPath {
+			return errors.New("project already exists")
+		}
+	}
+
 	c.Projects = append(c.Projects, newProject)
 	byteData, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(ConfigPath(), byteData, 0777)
 }
 
