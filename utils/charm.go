@@ -15,7 +15,7 @@ type Project struct {
 }
 
 // FilterValue allows us to filter the options by name.
-func (p Project) FilterValue() string { return p.ProjectName }
+func (p Project) FilterValue() string { return p.ProjectPath }
 
 /*
 Implements DefaultItem interface to render the list items.
