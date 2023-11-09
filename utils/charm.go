@@ -68,16 +68,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.InitList(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q", "esc":
+		case "ctrl+c", "esc":
 			m.quitting = true
 			return m, tea.Quit
-		case "backspace", "delete":
+		case "#":
 			if err := m.DeleteItem(); err != nil {
 				cobra.CheckErr(err)
 			}
 			m.quitting = true
 			return m, tea.Quit
-		case "enter", " ":
+		case "enter":
 			if err := m.UpdateList(); err != nil {
 				cobra.CheckErr(err)
 			}

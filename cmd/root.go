@@ -47,7 +47,7 @@ A TUI/CLI utility to manage your projects.`,
 			cobra.CheckErr(err)
 		}
 	},
-	Version: "0.1.4",
+	Version: "0.4.3",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
