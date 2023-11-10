@@ -3,6 +3,7 @@ package utils
 import (
 	"os/exec"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -68,7 +69,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.InitList(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "esc":
+		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
 		case "#":
@@ -86,6 +87,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.quitting = true
 			return m, tea.Quit
+		}
+	}
+	// m.list.KeyMap.Filter.Unbind()
+	// m.list.KeyMap.ShowFullHelp.Unbind()
+	m.list.KeyMap.Quit.Unbind()
+	m.list.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(
+				key.WithKeys("enter"),
+				key.WithHelp("enter :", "open"),
+			),
+			key.NewBinding(
+				key.WithKeys("#"),
+				key.WithHelp("# :", "delete"),
+			),
+			key.NewBinding(
+				key.WithKeys("ctrl+c"),
+				key.WithHelp("ctrl+c :", "quit"),
+			),
 		}
 	}
 	var cmd tea.Cmd
