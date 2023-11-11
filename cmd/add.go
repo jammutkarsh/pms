@@ -6,6 +6,7 @@ package cmd
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/JammUtkarsh/pms/utils"
 	"github.com/spf13/cobra"
@@ -51,6 +52,11 @@ func init() {
 	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
+func pathFinder(path string) string {
+    cleanedPath := filepath.Clean(path)
+    return cleanedPath
+}
+
 func pathResolver(path string) string {
 
 	wd, err := os.Getwd()
@@ -63,6 +69,7 @@ func pathResolver(path string) string {
 		cobra.CheckErr(utils.AddProject(wd))
 	default:
 		path = wd + string(os.PathSeparator) + path
+		path = pathFinder(path)
 		cobra.CheckErr(utils.AddProject(path))
 	}
 	return path
