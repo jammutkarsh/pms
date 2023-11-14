@@ -6,6 +6,7 @@ package cmd
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/JammUtkarsh/pms/utils"
 	"github.com/spf13/cobra"
@@ -63,7 +64,7 @@ func pathResolver(path string) string {
 		cobra.CheckErr(utils.AddProject(wd))
 	default:
 		path = wd + string(os.PathSeparator) + path
-		cobra.CheckErr(utils.AddProject(path))
+		cobra.CheckErr(utils.AddProject(filepath.Clean(path)))
 	}
 	return path
 }
