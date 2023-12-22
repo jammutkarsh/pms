@@ -67,6 +67,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.InitList(msg.Width, msg.Height)
+		m.list.SetWidth(msg.Width)
+		m.list.SetHeight(msg.Height)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -76,8 +78,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := m.DeleteItem(); err != nil {
 				cobra.CheckErr(err)
 			}
-			m.quitting = true
-			return m, tea.Quit
+			m.InitList(m.list.Width(), m.list.Height())
+			return m, nil
 		case "enter":
 			if err := m.UpdateList(); err != nil {
 				cobra.CheckErr(err)
@@ -89,8 +91,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	}
-	// m.list.KeyMap.Filter.Unbind()
-	// m.list.KeyMap.ShowFullHelp.Unbind()
 	m.list.KeyMap.Quit.Unbind()
 	m.list.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
