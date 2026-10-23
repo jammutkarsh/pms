@@ -56,6 +56,9 @@ Keys and actions are configured in ~/.pms.json.`,
 		if m.Action == nil {
 			return
 		}
+		if _, err := os.Stat(m.Chosen.ProjectPath); err != nil {
+			cobra.CheckErr(fmt.Errorf("%s no longer exists, remove it from the list with ctrl+d", m.Chosen.ProjectPath))
+		}
 		cobra.CheckErr(utils.UpdateProjectList(m.Chosen.ProjectPath))
 
 		if shellMode {

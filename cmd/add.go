@@ -5,7 +5,7 @@ package cmd
 
 import (
 	"errors"
-	"os"
+	"fmt"
 	"path/filepath"
 
 	"github.com/JammUtkarsh/pms/utils"
@@ -14,28 +14,32 @@ import (
 
 // addCmd represents the add command
 var addCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Add a new project to the list",
-	Long: `add subcommand takes one argument which is the path to the project.
+	Use:   "add [path...]",
+	Short: "Add new projects to the list",
+	Long: `add subcommand takes one or more paths to projects.
 If no argument is provided, the current directory will be added to the list.
 `,
 	Example: `  pms add
   pms add .
   pms add ~/path/to/project
+  pms add dir1 dir2 dir3
   pms add '$GOPATH/src/github.com/username/project' **`,
 	Run: func(cmd *cobra.Command, args []string) {
-		switch len(args) {
-		case 0:
-			wd, err := os.Getwd()
-			cobra.CheckErr(err)
-			cobra.CheckErr(utils.AddProject(wd))
-		case 1:
-			path, err := filepath.Abs(args[0])
-			cobra.CheckErr(err)
-			cobra.CheckErr(utils.AddProject(path))
-		default:
-			cobra.CheckErr(errors.New("too many arguments provided"))
+		if len(args) == 0 {
+			args = []string{"."}
 		}
+		// keep going past a bad path so the rest still get added
+		var errs []error
+		for _, arg := range args {
+			path, err := filepath.Abs(arg)
+			if err == nil {
+				err = utils.AddProject(path)
+			}
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", arg, err))
+			}
+		}
+		cobra.CheckErr(errors.Join(errs...))
 	},
 }
 

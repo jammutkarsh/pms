@@ -125,6 +125,12 @@ func DeleteProjet(projectPath string) error {
 
 // AddProject adds JSON representation of new project in ~/.pms.json
 func AddProject(workingPath string) error {
+	if info, err := os.Stat(workingPath); err != nil {
+		return err
+	} else if !info.IsDir() {
+		return errors.New("not a directory")
+	}
+
 	c := ReadConfig()
 	directories := strings.Split(workingPath, string(os.PathSeparator))
 

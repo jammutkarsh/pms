@@ -71,7 +71,7 @@ If two actions share a key, the first one wins.
 
 ## CLI
 
-- [x] `pms add [arg]` : adds `[arg]` directory to your projects.
+- [x] `pms add [dir...]` : adds one or more directories to your projects.
 <!--
 - [ ] `pms ls`: lists all the projects you have added.
 - [ ] `pms rm [arg]` : removes the  `[arg]` directory.

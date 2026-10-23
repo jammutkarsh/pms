@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -36,6 +37,7 @@ type Model struct {
 	matches  []Project
 	cursor   int
 	height   int
+	width    int
 	actions  []Action
 	help     bool
 
@@ -87,7 +89,7 @@ func (m *Model) filter() {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.height = msg.Height
+		m.height, m.width = msg.Height, msg.Width
 		return m, nil
 	case tea.KeyPressMsg:
 		k := msg.String()
@@ -158,11 +160,17 @@ func (m *Model) writeList(b *strings.Builder) {
 	start := max(m.cursor-rows+1, 0)
 	for i := start; i < min(start+rows, len(m.matches)); i++ {
 		p := m.matches[i]
+		var line string
 		if i == m.cursor {
-			b.WriteString(selectedStyle.Render("▌ "+p.ProjectName) + "  " + dimStyle.Render(p.ProjectPath) + "\n")
+			line = selectedStyle.Render("▌ "+p.ProjectName) + "  " + dimStyle.Render(p.ProjectPath)
 		} else {
-			b.WriteString("  " + p.ProjectName + "  " + dimStyle.Render(p.ProjectPath) + "\n")
+			line = "  " + p.ProjectName + "  " + dimStyle.Render(p.ProjectPath)
 		}
+		// a wrapped row would push the list past the screen height (#14)
+		if m.width > 0 {
+			line = ansi.Truncate(line, m.width, "…")
+		}
+		b.WriteString(line + "\n")
 	}
 	if len(m.projects) == 0 {
 		b.WriteString(dimStyle.Render("  No projects yet. Run `pms add` inside a project.") + "\n")
