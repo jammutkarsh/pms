@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -49,11 +50,14 @@ Keys and actions are configured in ~/.config/pms/config.json.`,
   pms https://github.com/user/repo                  # clone into current dir and add
   pms https://github.com/user/repo ~/working/path   # clone into an existing dir
   pms https://github.com/user/repo myRepo           # clone as myRepo
+  pms user/repo                                     # shorthand for github.com/user/repo
+  pms gitlab.example.com/group/repo                 # shorthand for https://gitlab.example.com/group/repo
   eval "$(pms init zsh)"   # add to ~/.zshrc so cd works in your shell
 `,
 	Args: cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) > 0 {
+			args[0] = expandShorthand(args[0])
 			if !isGitURL(args[0]) {
 				cobra.CheckErr(fmt.Errorf("unknown command or git URL %q", args[0]))
 			}
@@ -105,6 +109,24 @@ Keys and actions are configured in ~/.config/pms/config.json.`,
 		}
 	},
 	Version: "0.5.0",
+}
+
+var (
+	// user/repo, cloned from GitHub
+	githubShorthand = regexp.MustCompile(`^[\w-]+/[\w.-]+$`)
+	// host.tld/user/repo (or deeper, for GitLab subgroups), cloned over https
+	hostShorthand = regexp.MustCompile(`^[\w-]+(\.[\w-]+)+(/[\w.-]+){2,}$`)
+)
+
+// expandShorthand turns `user/repo` and `host.tld/user/repo` into https clone URLs.
+func expandShorthand(s string) string {
+	switch {
+	case githubShorthand.MatchString(s):
+		return "https://github.com/" + s
+	case hostShorthand.MatchString(s):
+		return "https://" + s
+	}
+	return s
 }
 
 func isGitURL(s string) bool {
