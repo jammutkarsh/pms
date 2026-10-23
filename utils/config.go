@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -14,20 +15,12 @@ const configFile = ".pms.json"
 // init() checks the presence of a valid config file.
 // If it doesn't exist, it creates one with default values.
 func init() {
-	// Create config file if it doesn't exist
 	if _, err := os.Stat(ConfigPath()); os.IsNotExist(err) {
-		// Write default config
-		if _, err := os.Create(ConfigPath()); err == nil {
-			byteData, err := json.MarshalIndent(config{Projects: []Project{}, Actions: defaultActions("code")}, "", "    ")
-			if err != nil {
-				cobra.CheckErr(err)
-			}
-			os.WriteFile(ConfigPath(), byteData, 0o777)
-		} else {
-			cobra.CheckErr(err)
-		}
+		cobra.CheckErr(writeConfig(config{Projects: []Project{}, Actions: defaultActions("code")}))
 	} else {
 		cobra.CheckErr(err)
+		// older versions wrote the config world-writable
+		cobra.CheckErr(os.Chmod(ConfigPath(), 0o600))
 	}
 }
 
@@ -149,13 +142,28 @@ func AddProject(workingPath string) error {
 	return writeConfig(c)
 }
 
-// writeConfig writes JSON representation of the config to ~/.pms.json
+// writeConfig writes JSON representation of the config to ~/.pms.json.
+// The config holds shell commands pms runs, so it's private to the user (0600),
+// and written via rename so a crash can't leave it half-written.
 func writeConfig(c config) error {
 	byteData, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(ConfigPath(), byteData, 0o777)
+	path := ConfigPath()
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".pms-*.json")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(byteData); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 // ConfigPath returns the path of the config file
