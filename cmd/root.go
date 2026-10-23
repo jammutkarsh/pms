@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -45,9 +46,20 @@ var rootCmd = &cobra.Command{
 Search your projects and open them in your editor, IDE, AI agents or just cd into them.
 Keys and actions are configured in ~/.pms.json.`,
 	Example: `  pms
+  pms https://github.com/user/repo                  # clone into current dir and add
+  pms https://github.com/user/repo ~/working/path   # clone into an existing dir
+  pms https://github.com/user/repo myRepo           # clone as myRepo
   eval "$(pms init zsh)"   # add to ~/.zshrc so cd works in your shell
 `,
+	Args: cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) > 0 {
+			if !isGitURL(args[0]) {
+				cobra.CheckErr(fmt.Errorf("unknown command or git URL %q", args[0]))
+			}
+			cobra.CheckErr(clone(args))
+			return
+		}
 		m := utils.NewModel()
 		// The UI goes to stderr so stdout stays clean for the shell wrapper.
 		if _, err := tea.NewProgram(m, tea.WithOutput(os.Stderr)).Run(); err != nil {
@@ -93,6 +105,49 @@ Keys and actions are configured in ~/.pms.json.`,
 		}
 	},
 	Version: "0.5.0",
+}
+
+func isGitURL(s string) bool {
+	for _, p := range []string{"https://", "http://", "ssh://", "git://", "git@"} {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// cloneDest picks where `git clone` puts the repo: inside dest when it's an
+// existing directory, at dest otherwise (so it doubles as a rename), or in the
+// current directory when no dest is given.
+func cloneDest(url, dest string) string {
+	name := strings.TrimSuffix(strings.TrimRight(url, "/"), ".git")
+	name = name[strings.LastIndexAny(name, "/:")+1:]
+	if dest == "" {
+		return name
+	}
+	if info, err := os.Stat(dest); err == nil && info.IsDir() {
+		return filepath.Join(dest, name)
+	}
+	return dest
+}
+
+// clone runs `git clone url [dest]` and adds the result to the project list.
+func clone(args []string) error {
+	var dest string
+	if len(args) > 1 {
+		dest = args[1]
+	}
+	dest = cloneDest(args[0], dest)
+	c := exec.Command("git", "clone", "--", args[0], dest)
+	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stderr, os.Stderr
+	if err := c.Run(); err != nil {
+		return err
+	}
+	path, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
+	return utils.AddProject(path)
 }
 
 func shellQuote(s string) string {
