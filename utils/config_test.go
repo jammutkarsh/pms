@@ -14,8 +14,9 @@ func TestRank(t *testing.T) {
 		{ProjectName: "once-now", Opens: 1, LastOpened: ago(time.Minute)},           // 4
 		{ProjectName: "few-today", Opens: 3, LastOpened: ago(2 * time.Hour)},        // 6
 		{ProjectName: "never2"},
+		{ProjectName: "pinned", Pinned: true},
 	}, now)
-	want := []string{"few-today", "often-old", "once-now", "never", "never2"}
+	want := []string{"pinned", "few-today", "often-old", "once-now", "never", "never2"}
 	for i, p := range got {
 		if p.ProjectName != want[i] {
 			t.Fatalf("rank order = %v, want %v", got, want)

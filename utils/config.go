@@ -89,18 +89,30 @@ func ReadConfig() (c config) {
 
 // RecordOpen bumps the open count and last-opened time used for ranking.
 func RecordOpen(projectPath string) error {
+	return updateProject(projectPath, func(p *Project) {
+		p.Opens++
+		p.LastOpened = time.Now().Unix()
+	})
+}
+
+// TogglePin pins or unpins a project; pinned projects stay at the top.
+func TogglePin(projectPath string) error {
+	return updateProject(projectPath, func(p *Project) { p.Pinned = !p.Pinned })
+}
+
+func updateProject(projectPath string, fn func(*Project)) error {
 	c := ReadConfig()
 	for i := range c.Projects {
 		if c.Projects[i].ProjectPath == projectPath {
-			c.Projects[i].Opens++
-			c.Projects[i].LastOpened = time.Now().Unix()
+			fn(&c.Projects[i])
 		}
 	}
 	return writeConfig(c)
 }
 
-// rank orders projects by frecency: open count weighted by how recently they
-// were opened (the same buckets zoxide uses). Ties keep their list order.
+// rank puts pinned projects first, then orders by frecency: open count weighted
+// by how recently they were opened (the same buckets zoxide uses). Ties keep
+// their list order.
 func rank(projects []Project, now time.Time) []Project {
 	score := func(p Project) float64 {
 		switch age := now.Sub(time.Unix(p.LastOpened, 0)); {
@@ -115,6 +127,12 @@ func rank(projects []Project, now time.Time) []Project {
 		}
 	}
 	slices.SortStableFunc(projects, func(a, b Project) int {
+		if a.Pinned != b.Pinned {
+			if a.Pinned {
+				return -1
+			}
+			return 1
+		}
 		return cmp.Compare(score(b), score(a))
 	})
 	return projects

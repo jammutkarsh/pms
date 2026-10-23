@@ -18,6 +18,7 @@ type Project struct {
 	ProjectPath string `json:"Path"`
 	Opens       int    `json:"opens,omitempty"`
 	LastOpened  int64  `json:"lastOpened,omitempty"` // unix seconds
+	Pinned      bool   `json:"pinned,omitempty"`
 }
 
 // Action is something to do with the selected project, triggered by any of its Keys.
@@ -117,6 +118,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "ctrl+n", "ctrl+j":
 			m.cursor = min(m.cursor+1, max(len(m.matches)-1, 0))
 			return m, nil
+		case "ctrl+t":
+			if len(m.matches) > 0 {
+				if err := TogglePin(m.matches[m.cursor].ProjectPath); err != nil {
+					return m, tea.Quit
+				}
+				m.reload()
+			}
+			return m, nil
 		case "ctrl+d":
 			if len(m.matches) > 0 {
 				if err := DeleteProjet(m.matches[m.cursor].ProjectPath); err != nil {
@@ -163,11 +172,15 @@ func (m *Model) writeList(b *strings.Builder) {
 	start := max(m.cursor-rows+1, 0)
 	for i := start; i < min(start+rows, len(m.matches)); i++ {
 		p := m.matches[i]
+		name := p.ProjectName
+		if p.Pinned {
+			name = "★ " + name
+		}
 		var line string
 		if i == m.cursor {
-			line = selectedStyle.Render("▌ "+p.ProjectName) + "  " + dimStyle.Render(p.ProjectPath)
+			line = selectedStyle.Render("▌ "+name) + "  " + dimStyle.Render(p.ProjectPath)
 		} else {
-			line = "  " + p.ProjectName + "  " + dimStyle.Render(p.ProjectPath)
+			line = "  " + name + "  " + dimStyle.Render(p.ProjectPath)
 		}
 		// a wrapped row would push the list past the screen height (#14)
 		if m.width > 0 {
@@ -203,6 +216,7 @@ func (m *Model) writeHelp(b *strings.Builder) {
 	}
 	b.WriteString("\nNavigation\n\n")
 	row("↑ ↓ / ctrl+p ctrl+n", "move")
+	row("ctrl+t", "pin / unpin project")
 	row("ctrl+d", "remove project from list")
 	row("esc / ctrl+c", "quit")
 	b.WriteString("\n" + dimStyle.Render("Edit actions and keys in "+ConfigPath()+" · ? or esc to close"))
