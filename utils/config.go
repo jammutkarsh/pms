@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -84,32 +87,37 @@ func ReadConfig() (c config) {
 	return c
 }
 
-// UpdateProjectList writes JSON representation of projects to the config file
-func UpdateProjectList(projectPath string) error {
-	var (
-		currentProjectIndex int
-		currentProject      Project
-	)
-	projects := ReadConfig().getProjects()
-
-	// finding the index of the selected project
-	for i, p := range projects {
-		if p.ProjectPath == projectPath {
-			currentProjectIndex = i
-			currentProject = p
-			break
+// RecordOpen bumps the open count and last-opened time used for ranking.
+func RecordOpen(projectPath string) error {
+	c := ReadConfig()
+	for i := range c.Projects {
+		if c.Projects[i].ProjectPath == projectPath {
+			c.Projects[i].Opens++
+			c.Projects[i].LastOpened = time.Now().Unix()
 		}
 	}
-
-	// moving the selected project to the top of the list
-	for i := currentProjectIndex; i > 0; i-- {
-		projects[i] = projects[i-1]
-	}
-	projects[0] = currentProject
-
-	c := ReadConfig()
-	c.Projects = projects
 	return writeConfig(c)
+}
+
+// rank orders projects by frecency: open count weighted by how recently they
+// were opened (the same buckets zoxide uses). Ties keep their list order.
+func rank(projects []Project, now time.Time) []Project {
+	score := func(p Project) float64 {
+		switch age := now.Sub(time.Unix(p.LastOpened, 0)); {
+		case age < time.Hour:
+			return float64(p.Opens) * 4
+		case age < 24*time.Hour:
+			return float64(p.Opens) * 2
+		case age < 7*24*time.Hour:
+			return float64(p.Opens) / 2
+		default:
+			return float64(p.Opens) / 4
+		}
+	}
+	slices.SortStableFunc(projects, func(a, b Project) int {
+		return cmp.Compare(score(b), score(a))
+	})
+	return projects
 }
 
 // DeleteProjet deletes JSON representation of project from the config file

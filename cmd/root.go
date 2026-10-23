@@ -71,7 +71,7 @@ Keys and actions are configured in ~/.config/pms/config.json.`,
 		if _, err := os.Stat(m.Chosen.ProjectPath); err != nil {
 			cobra.CheckErr(fmt.Errorf("%s no longer exists, remove it from the list with ctrl+d", m.Chosen.ProjectPath))
 		}
-		cobra.CheckErr(utils.UpdateProjectList(m.Chosen.ProjectPath))
+		cobra.CheckErr(utils.RecordOpen(m.Chosen.ProjectPath))
 
 		if shellMode {
 			line := "cd -- " + shellQuote(m.Chosen.ProjectPath)

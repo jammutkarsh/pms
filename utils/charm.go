@@ -3,6 +3,7 @@ package utils
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -15,6 +16,8 @@ import (
 type Project struct {
 	ProjectName string `json:"Name"`
 	ProjectPath string `json:"Path"`
+	Opens       int    `json:"opens,omitempty"`
+	LastOpened  int64  `json:"lastOpened,omitempty"` // unix seconds
 }
 
 // Action is something to do with the selected project, triggered by any of its Keys.
@@ -63,7 +66,7 @@ func (m *Model) Init() tea.Cmd {
 
 // reload reads the projects from the config file and re-applies the search.
 func (m *Model) reload() {
-	m.projects = ReadConfig().getProjects()
+	m.projects = rank(ReadConfig().getProjects(), time.Now())
 	m.filter()
 }
 
