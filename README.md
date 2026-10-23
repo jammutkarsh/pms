@@ -47,6 +47,7 @@ Fixed keys:
 | --- | --- |
 | `↑` `↓` / `ctrl+p` `ctrl+n` | Move |
 | `?` | Help: every action, its keys and the config path |
+| `ctrl+t` | Pin / unpin project (pinned stay on top; the rest are ordered by how often and recently you open them) |
 | `ctrl+d` | Remove project from the list |
 | `esc` / `ctrl+c` | Quit |
 
