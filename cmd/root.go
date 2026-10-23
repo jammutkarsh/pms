@@ -44,7 +44,7 @@ var rootCmd = &cobra.Command{
 	Long: `PMS - Project Management S̶y̶s̶t̶e̶m̶ Sucks
 
 Search your projects and open them in your editor, IDE, AI agents or just cd into them.
-Keys and actions are configured in ~/.pms.json.`,
+Keys and actions are configured in ~/.config/pms/config.json.`,
 	Example: `  pms
   pms https://github.com/user/repo                  # clone into current dir and add
   pms https://github.com/user/repo ~/working/path   # clone into an existing dir

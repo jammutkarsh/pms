@@ -54,7 +54,7 @@ Fixed keys:
 
 ### Actions
 
-Actions live in `~/.pms.json` (defaults are written on first run). `run` is a shell command run inside the project, so `$VARS` expand; an empty `run` just `cd`s. Add your AI agents here:
+Actions live in `~/.config/pms/config.json` (or `$XDG_CONFIG_HOME/pms/config.json`; defaults are written on first run, and an old `~/.pms.json` is moved there). `run` is a shell command run inside the project, so `$VARS` expand; an empty `run` just `cd`s. Add your AI agents here:
 
 ```json
 "actions": [

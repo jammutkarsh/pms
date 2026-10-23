@@ -6,22 +6,33 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 )
 
-const configFile = ".pms.json"
+var setupOnce sync.Once
 
-// init() checks the presence of a valid config file.
-// If it doesn't exist, it creates one with default values.
-func init() {
-	if _, err := os.Stat(ConfigPath()); os.IsNotExist(err) {
-		cobra.CheckErr(writeConfig(config{Projects: []Project{}, Actions: defaultActions("code")}))
-	} else {
+// setup makes sure a config file exists, moving an old ~/.pms.json over
+// or writing defaults. It runs on the first read rather than in init() so
+// importing the package (e.g. in tests) doesn't touch the user's config.
+func setup() {
+	path := ConfigPath()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		cobra.CheckErr(err)
-		// older versions wrote the config world-writable
-		cobra.CheckErr(os.Chmod(ConfigPath(), 0o600))
+		return
 	}
+	cobra.CheckErr(os.MkdirAll(filepath.Dir(path), 0o700))
+	home, err := os.UserHomeDir()
+	cobra.CheckErr(err)
+	legacy := filepath.Join(home, ".pms.json")
+	if data, err := os.ReadFile(legacy); err == nil {
+		// older versions wrote the config world-writable, so write a fresh 0600 file rather than rename
+		cobra.CheckErr(os.WriteFile(path, data, 0o600))
+		cobra.CheckErr(os.Remove(legacy))
+		return
+	}
+	cobra.CheckErr(writeConfig(config{Projects: []Project{}, Actions: defaultActions("code")}))
 }
 
 type config struct {
@@ -31,7 +42,7 @@ type config struct {
 	Actions       []Action  `json:"actions"`
 }
 
-// defaultActions seeds ~/.pms.json; everything else (agents etc.) is added there by the user.
+// defaultActions seeds the config file; everything else (agents etc.) is added there by the user.
 // $EDITOR is left for the shell to expand at run time.
 func defaultActions(ide string) []Action {
 	return []Action{
@@ -46,8 +57,9 @@ func (c config) getProjects() []Project {
 	return c.Projects
 }
 
-// ReadConfig returns go struct of config file at ~/.pms.json
+// ReadConfig returns go struct of the config file
 func ReadConfig() (c config) {
+	setupOnce.Do(setup)
 	configFile, err := os.Open(ConfigPath())
 	if err != nil {
 		cobra.CheckErr(err)
@@ -72,7 +84,7 @@ func ReadConfig() (c config) {
 	return c
 }
 
-// UpdateProjectList writes JSON representation of projects to ~/.pms.json
+// UpdateProjectList writes JSON representation of projects to the config file
 func UpdateProjectList(projectPath string) error {
 	var (
 		currentProjectIndex int
@@ -100,7 +112,7 @@ func UpdateProjectList(projectPath string) error {
 	return writeConfig(c)
 }
 
-// DeleteProjet deletes JSON representation of project from ~/.pms.json
+// DeleteProjet deletes JSON representation of project from the config file
 func DeleteProjet(projectPath string) error {
 	var updatedProjects []Project
 	currentProjects := ReadConfig().getProjects()
@@ -116,7 +128,7 @@ func DeleteProjet(projectPath string) error {
 	return writeConfig(c)
 }
 
-// AddProject adds JSON representation of new project in ~/.pms.json
+// AddProject adds JSON representation of new project in the config file
 func AddProject(workingPath string) error {
 	if info, err := os.Stat(workingPath); err != nil {
 		return err
@@ -142,7 +154,7 @@ func AddProject(workingPath string) error {
 	return writeConfig(c)
 }
 
-// writeConfig writes JSON representation of the config to ~/.pms.json.
+// writeConfig writes JSON representation of the config to the config file.
 // The config holds shell commands pms runs, so it's private to the user (0600),
 // and written via rename so a crash can't leave it half-written.
 func writeConfig(c config) error {
@@ -166,13 +178,14 @@ func writeConfig(c config) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-// ConfigPath returns the path of the config file
+// ConfigPath returns the path of the config file: $XDG_CONFIG_HOME/pms/config.json,
+// falling back to ~/.config like XDG says (os.UserConfigDir doesn't on macOS).
 func ConfigPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" {
+		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
-		return ""
+		dir = filepath.Join(home, ".config")
 	}
-
-	return home + string(os.PathSeparator) + configFile
+	return filepath.Join(dir, "pms", "config.json")
 }
