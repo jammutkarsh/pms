@@ -23,3 +23,17 @@ func TestRank(t *testing.T) {
 		}
 	}
 }
+
+func TestParseGitStatus(t *testing.T) {
+	out := `# branch.oid 6988e3c
+# branch.head main
+# branch.upstream origin/main
+# branch.ab +0 -0
+1 .M N... 100644 100644 100644 a b cmd/root.go
+2 R. N... 100644 100644 100644 a b R100 new.go	old.go
+? scratch.txt
+`
+	if got := parseGitStatus(out); got != (gitStatus{branch: "main", changed: 3}) {
+		t.Errorf("parseGitStatus = %+v", got)
+	}
+}

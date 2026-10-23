@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -32,6 +34,10 @@ type Action struct {
 var (
 	selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true)
 	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+	branchStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("110"))
+	changedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	cleanStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
+	missingStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
 )
 
 /*Main Model*/
@@ -44,6 +50,7 @@ type Model struct {
 	width    int
 	actions  []Action
 	help     bool
+	git      map[string]gitStatus
 
 	// Chosen and Action are set when the user triggers an action.
 	Chosen Project
@@ -56,13 +63,17 @@ func NewModel() *Model {
 	in.Prompt = "❯ "
 	in.Placeholder = "Search projects…"
 	in.Focus()
-	m := &Model{input: in, actions: ReadConfig().Actions}
+	m := &Model{input: in, actions: ReadConfig().Actions, git: map[string]gitStatus{}}
 	m.reload()
 	return m
 }
 
 func (m *Model) Init() tea.Cmd {
-	return nil
+	cmds := make([]tea.Cmd, len(m.projects))
+	for i, p := range m.projects {
+		cmds[i] = fetchGitStatus(p.ProjectPath)
+	}
+	return tea.Batch(cmds...)
 }
 
 // reload reads the projects from the config file and re-applies the search.
@@ -94,6 +105,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height, m.width = msg.Height, msg.Width
+		return m, nil
+	case gitStatusMsg:
+		m.git[msg.path] = msg.status
 		return m, nil
 	case tea.KeyPressMsg:
 		k := msg.String()
@@ -168,7 +182,8 @@ func (m *Model) View() tea.View {
 func (m *Model) writeList(b *strings.Builder) {
 	b.WriteString(m.input.View() + "\n\n")
 
-	rows := max(m.height-5, 1)
+	// each project takes a name line, a details line and a blank line
+	rows := max((m.height-5)/3, 1)
 	start := max(m.cursor-rows+1, 0)
 	for i := start; i < min(start+rows, len(m.matches)); i++ {
 		p := m.matches[i]
@@ -176,17 +191,31 @@ func (m *Model) writeList(b *strings.Builder) {
 		if p.Pinned {
 			name = "★ " + name
 		}
-		var line string
+		// git details first so a long path is what gets truncated
+		var details string
+		if g, ok := m.git[p.ProjectPath]; ok {
+			switch {
+			case g.missing:
+				details = missingStyle.Render("missing") + "  "
+			case g.changed > 0:
+				details = branchStyle.Render("⎇ "+g.branch) + "  " + changedStyle.Render(fmt.Sprintf("%d changed", g.changed)) + "  "
+			default:
+				details = branchStyle.Render("⎇ "+g.branch) + "  " + cleanStyle.Render("clean") + "  "
+			}
+		}
+		details += dimStyle.Render(tildePath(p.ProjectPath))
+		bar := "  "
 		if i == m.cursor {
-			line = selectedStyle.Render("▌ "+name) + "  " + dimStyle.Render(p.ProjectPath)
-		} else {
-			line = "  " + name + "  " + dimStyle.Render(p.ProjectPath)
+			bar, name = selectedStyle.Render("▌ "), selectedStyle.Render(name)
 		}
-		// a wrapped row would push the list past the screen height (#14)
-		if m.width > 0 {
-			line = ansi.Truncate(line, m.width, "…")
+		for _, line := range []string{bar + name, bar + details} {
+			// a wrapped row would push the list past the screen height (#14)
+			if m.width > 0 {
+				line = ansi.Truncate(line, m.width, "…")
+			}
+			b.WriteString(line + "\n")
 		}
-		b.WriteString(line + "\n")
+		b.WriteString("\n")
 	}
 	if len(m.projects) == 0 {
 		b.WriteString(dimStyle.Render("  No projects yet. Run `pms add` inside a project.") + "\n")
@@ -200,6 +229,15 @@ func (m *Model) writeList(b *strings.Builder) {
 	}
 	hints = append(hints, "? help")
 	b.WriteString("\n" + dimStyle.Render(strings.Join(hints, " · ")))
+}
+
+// tildePath shortens paths under $HOME to ~/….
+func tildePath(path string) string {
+	home, err := os.UserHomeDir()
+	if err == nil && strings.HasPrefix(path, home+string(os.PathSeparator)) {
+		return "~" + path[len(home):]
+	}
+	return path
 }
 
 func (m *Model) writeHelp(b *strings.Builder) {
