@@ -230,7 +230,9 @@ func (m *Model) writeList(b *strings.Builder) {
 		}
 	}
 	hints = append(hints, "? help")
-	b.WriteString("\n" + dimStyle.Render(strings.Join(hints, " · ")))
+	// pin the hints to the last line of the screen
+	pad := max(m.height-1-strings.Count(b.String(), "\n"), 1)
+	b.WriteString(strings.Repeat("\n", pad) + dimStyle.Render(strings.Join(hints, " · ")))
 }
 
 // tildePath shortens paths under $HOME to ~/….
