@@ -105,6 +105,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height, m.width = msg.Height, msg.Width
+		// with no width, textinput only renders the placeholder's first rune
+		m.input.SetWidth(max(msg.Width-lipgloss.Width(m.input.Prompt)-1, 1))
 		return m, nil
 	case gitStatusMsg:
 		m.git[msg.path] = msg.status
