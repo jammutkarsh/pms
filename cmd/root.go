@@ -172,6 +172,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.Flags().BoolVar(&shellMode, "shell", false, "print a shell command instead of running it (used by `pms init`)")
 	rootCmd.Flags().MarkHidden("shell")
 }
