@@ -1,12 +1,13 @@
 package utils
 
 import (
-	"os/exec"
+	"slices"
+	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/sahilm/fuzzy"
 )
 
 /*Custom Type*/
@@ -15,135 +16,183 @@ type Project struct {
 	ProjectPath string `json:"Path"`
 }
 
-// FilterValue allows us to filter the options by name.
-func (p Project) FilterValue() string { return p.ProjectPath }
+// Action is something to do with the selected project, triggered by any of its Keys.
+// Run is a shell command executed inside the project directory; empty means just cd.
+type Action struct {
+	Name string   `json:"name"`
+	Keys []string `json:"keys"`
+	Run  string   `json:"run"`
+}
 
-/*
-Implements DefaultItem interface to render the list items.
-https://pkg.go.dev/github.com/charmbracelet/bubbles@v0.15.0/list#DefaultItem
-*/
-
-// Title returns the name of the project.
-func (p Project) Title() string { return p.ProjectName }
-
-// Description returns the path of the project.
-func (p Project) Description() string { return p.ProjectPath }
+var (
+	selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true)
+	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+)
 
 /*Main Model*/
 type Model struct {
-	list     list.Model
-	quitting bool
+	input    textinput.Model
+	projects []Project
+	matches  []Project
+	cursor   int
+	height   int
+	actions  []Action
+	help     bool
+
+	// Chosen and Action are set when the user triggers an action.
+	Chosen Project
+	Action *Action
 }
 
 // NewModel returns a new Model with some sane defaults.
 func NewModel() *Model {
-	return &Model{}
+	in := textinput.New()
+	in.Prompt = "❯ "
+	in.Placeholder = "Search projects…"
+	in.Focus()
+	m := &Model{input: in, actions: ReadConfig().Actions}
+	m.reload()
+	return m
 }
 
 func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-// InitList initializes the list with the projects from the config file.
-func (m *Model) InitList(width, height int) {
-	// setting the default values
-	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
-	m.list.Title = "Projects"
-
-	// reading the projects from file
-	projects := ReadConfig().getProjects()
-
-	projectList := make([]list.Item, len(projects))
-	for i, project := range projects {
-		projectList[i] = list.Item(project)
-	}
-
-	// setting list items
-	m.list.SetItems(projectList)
+// reload reads the projects from the config file and re-applies the search.
+func (m *Model) reload() {
+	m.projects = ReadConfig().getProjects()
+	m.filter()
 }
 
-// Update updates the model on an event like a key press. Also sets the TUI window size.
+// filter fuzzy-matches the search query against project paths.
+func (m *Model) filter() {
+	q := m.input.Value()
+	if q == "" {
+		m.matches = m.projects
+	} else {
+		paths := make([]string, len(m.projects))
+		for i, p := range m.projects {
+			paths[i] = p.ProjectPath
+		}
+		m.matches = nil
+		for _, match := range fuzzy.Find(q, paths) {
+			m.matches = append(m.matches, m.projects[match.Index])
+		}
+	}
+	m.cursor = min(m.cursor, max(len(m.matches)-1, 0))
+}
+
+// Update updates the model on an event like a key press.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.InitList(msg.Width, msg.Height)
-		m.list.SetWidth(msg.Width)
-		m.list.SetHeight(msg.Height)
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			m.quitting = true
-			return m, tea.Quit
-		case "#":
-			if err := m.DeleteItem(); err != nil {
-				cobra.CheckErr(err)
+		m.height = msg.Height
+		return m, nil
+	case tea.KeyPressMsg:
+		k := msg.String()
+		if m.help {
+			switch k {
+			case "ctrl+c":
+				return m, tea.Quit
+			case "?", "esc", "q":
+				m.help = false
 			}
-			m.InitList(m.list.Width(), m.list.Height())
 			return m, nil
-		case "enter":
-			if err := m.UpdateList(); err != nil {
-				cobra.CheckErr(err)
-			}
-			if err := m.OpenInEditor(); err != nil {
-				cobra.CheckErr(err)
-			}
-			m.quitting = true
+		}
+		switch k {
+		case "ctrl+c", "esc":
 			return m, tea.Quit
+		case "?":
+			m.help = true
+			return m, nil
+		case "up", "ctrl+p", "ctrl+k":
+			m.cursor = max(m.cursor-1, 0)
+			return m, nil
+		case "down", "ctrl+n", "ctrl+j":
+			m.cursor = min(m.cursor+1, max(len(m.matches)-1, 0))
+			return m, nil
+		case "ctrl+d":
+			if len(m.matches) > 0 {
+				if err := DeleteProjet(m.matches[m.cursor].ProjectPath); err != nil {
+					return m, tea.Quit
+				}
+				m.reload()
+			}
+			return m, nil
+		}
+		for i, a := range m.actions {
+			if slices.Contains(a.Keys, k) {
+				if len(m.matches) > 0 {
+					m.Chosen, m.Action = m.matches[m.cursor], &m.actions[i]
+					return m, tea.Quit
+				}
+				return m, nil
+			}
 		}
 	}
-	m.list.KeyMap.Quit.Unbind()
-	m.list.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{
-			key.NewBinding(
-				key.WithKeys("enter"),
-				key.WithHelp("enter :", "open"),
-			),
-			key.NewBinding(
-				key.WithKeys("#"),
-				key.WithHelp("# :", "delete"),
-			),
-			key.NewBinding(
-				key.WithKeys("ctrl+c"),
-				key.WithHelp("ctrl+c :", "quit"),
-			),
-		}
-	}
+
 	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
+	m.input, cmd = m.input.Update(msg)
+	m.filter()
 	return m, cmd
 }
 
-// View renders the list.
-func (m Model) View() string {
-	if m.quitting {
-		return "" // cleans the terminal on exit
+// View renders the search box, the matching projects and the key hints, or the help screen.
+func (m *Model) View() tea.View {
+	var b strings.Builder
+	if m.help {
+		m.writeHelp(&b)
+	} else {
+		m.writeList(&b)
 	}
-	return m.list.View() + "\n"
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
-// OpenInEditor opens the selected project in the default editor.
-func (m Model) OpenInEditor() error {
-	selectedIProject := m.list.SelectedItem()
-	project := selectedIProject.(Project)
+func (m *Model) writeList(b *strings.Builder) {
+	b.WriteString(m.input.View() + "\n\n")
 
-	defaultEditor := ReadConfig().getDefaultEditor()
+	rows := max(m.height-5, 1)
+	start := max(m.cursor-rows+1, 0)
+	for i := start; i < min(start+rows, len(m.matches)); i++ {
+		p := m.matches[i]
+		if i == m.cursor {
+			b.WriteString(selectedStyle.Render("▌ "+p.ProjectName) + "  " + dimStyle.Render(p.ProjectPath) + "\n")
+		} else {
+			b.WriteString("  " + p.ProjectName + "  " + dimStyle.Render(p.ProjectPath) + "\n")
+		}
+	}
+	if len(m.projects) == 0 {
+		b.WriteString(dimStyle.Render("  No projects yet. Run `pms add` inside a project.") + "\n")
+	}
 
-	cmd := exec.Command(defaultEditor, project.ProjectPath)
-	return cmd.Start()
+	hints := make([]string, 0, len(m.actions)+1)
+	for _, a := range m.actions {
+		if len(a.Keys) > 0 {
+			hints = append(hints, a.Keys[0]+" "+a.Name)
+		}
+	}
+	hints = append(hints, "? help")
+	b.WriteString("\n" + dimStyle.Render(strings.Join(hints, " · ")))
 }
 
-// DeleteItem deletes the selected project from the config file.
-func (m Model) DeleteItem() error {
-	selectedIProject := m.list.SelectedItem()
-	project := selectedIProject.(Project)
-
-	return DeleteProjet(project.ProjectPath)
-}
-
-// UpdateList updates the list with the selected project on top.
-func (m Model) UpdateList() error {
-	selectedIProject := m.list.SelectedItem()
-	project := selectedIProject.(Project)
-
-	return UpdateProjectList(project.ProjectPath)
+func (m *Model) writeHelp(b *strings.Builder) {
+	row := func(keys, desc string) {
+		b.WriteString("  " + selectedStyle.Width(26).Render(keys) + desc + "\n")
+	}
+	b.WriteString("Actions\n\n")
+	for _, a := range m.actions {
+		desc := a.Name + dimStyle.Render("  "+a.Run)
+		if a.Run == "" {
+			desc = a.Name + dimStyle.Render("  (change directory)")
+		}
+		row(strings.Join(a.Keys, " / "), desc)
+	}
+	b.WriteString("\nNavigation\n\n")
+	row("↑ ↓ / ctrl+p ctrl+n", "move")
+	row("ctrl+d", "remove project from list")
+	row("esc / ctrl+c", "quit")
+	b.WriteString("\n" + dimStyle.Render("Edit actions and keys in "+ConfigPath()+" · ? or esc to close"))
 }

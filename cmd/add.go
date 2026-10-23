@@ -24,15 +24,16 @@ If no argument is provided, the current directory will be added to the list.
   pms add ~/path/to/project
   pms add '$GOPATH/src/github.com/username/project' **`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
+		switch len(args) {
+		case 0:
 			wd, err := os.Getwd()
-			if err != nil {
-				cobra.CheckErr(err)
-			}
+			cobra.CheckErr(err)
 			cobra.CheckErr(utils.AddProject(wd))
-		} else if len(args) == 1 {
-			pathResolver(args[0])
-		} else {
+		case 1:
+			path, err := filepath.Abs(args[0])
+			cobra.CheckErr(err)
+			cobra.CheckErr(utils.AddProject(path))
+		default:
 			cobra.CheckErr(errors.New("too many arguments provided"))
 		}
 	},
@@ -50,21 +51,4 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-func pathResolver(path string) string {
-
-	wd, err := os.Getwd()
-	if err != nil {
-		cobra.CheckErr(err)
-	}
-
-	switch {
-	case path[0] == '.' && len(path) == 1:
-		cobra.CheckErr(utils.AddProject(wd))
-	default:
-		path = wd + string(os.PathSeparator) + path
-		cobra.CheckErr(utils.AddProject(filepath.Clean(path)))
-	}
-	return path
 }

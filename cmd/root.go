@@ -22,32 +22,78 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/JammUtkarsh/pms/utils"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
+
+// shellMode prints a shell command for the `pms init` wrapper to eval, so cd sticks in the caller's shell.
+var shellMode bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pms",
-	Short: "A project management tool",
-	Long: `PMS - Project Management System S̶y̶s̶t̶e̶m̶ Sucks
+	Short: "A project launcher",
+	Long: `PMS - Project Management S̶y̶s̶t̶e̶m̶ Sucks
 
-A TUI/CLI utility to manage your projects.`,
+Search your projects and open them in your editor, IDE, AI agents or just cd into them.
+Keys and actions are configured in ~/.pms.json.`,
 	Example: `  pms
-  pms --help
-  pms --version
+  eval "$(pms init zsh)"   # add to ~/.zshrc so cd works in your shell
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		m := utils.NewModel()
-		p := tea.NewProgram(m)
-		if err := p.Start(); err != nil {
+		// The UI goes to stderr so stdout stays clean for the shell wrapper.
+		if _, err := tea.NewProgram(m, tea.WithOutput(os.Stderr)).Run(); err != nil {
+			cobra.CheckErr(err)
+		}
+		if m.Action == nil {
+			return
+		}
+		cobra.CheckErr(utils.UpdateProjectList(m.Chosen.ProjectPath))
+
+		if shellMode {
+			line := "cd -- " + shellQuote(m.Chosen.ProjectPath)
+			if m.Action.Run != "" {
+				line += " && " + m.Action.Run
+			}
+			fmt.Println(line)
+			return
+		}
+
+		// Without the wrapper a child process can't change our parent's directory,
+		// so run the action (or a subshell for cd) inside the project instead.
+		shell := os.Getenv("SHELL")
+		if shell == "" {
+			shell = "sh"
+		}
+		var shellArgs []string
+		if m.Action.Run != "" {
+			shellArgs = []string{"-c", m.Action.Run}
+		} else {
+			fmt.Fprintln(os.Stderr, `pms: opening a subshell; add eval "$(pms init zsh)" to your shell rc to cd in place`)
+		}
+		c := exec.Command(shell, shellArgs...)
+		c.Dir, c.Stdin, c.Stdout, c.Stderr = m.Chosen.ProjectPath, os.Stdin, os.Stdout, os.Stderr
+		if err := c.Run(); err != nil {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				os.Exit(exitErr.ExitCode())
+			}
 			cobra.CheckErr(err)
 		}
 	},
-	Version: "0.4.3",
+	Version: "0.5.0",
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -68,5 +114,6 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolVar(&shellMode, "shell", false, "print a shell command instead of running it (used by `pms init`)")
+	rootCmd.Flags().MarkHidden("shell")
 }

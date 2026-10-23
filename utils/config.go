@@ -18,11 +18,11 @@ func init() {
 	if _, err := os.Stat(ConfigPath()); os.IsNotExist(err) {
 		// Write default config
 		if _, err := os.Create(ConfigPath()); err == nil {
-			byteData, err := json.MarshalIndent(config{"code", []Project{}}, "", "    ")
+			byteData, err := json.MarshalIndent(config{Projects: []Project{}, Actions: defaultActions("code")}, "", "    ")
 			if err != nil {
 				cobra.CheckErr(err)
 			}
-			os.WriteFile(ConfigPath(), byteData, 0777)
+			os.WriteFile(ConfigPath(), byteData, 0o777)
 		} else {
 			cobra.CheckErr(err)
 		}
@@ -32,18 +32,25 @@ func init() {
 }
 
 type config struct {
-	DefaultEditor string    `json:"defaultEditor"`
+	// DefaultEditor is only read to migrate old configs into Actions.
+	DefaultEditor string    `json:"defaultEditor,omitempty"`
 	Projects      []Project `json:"projects"`
+	Actions       []Action  `json:"actions"`
+}
+
+// defaultActions seeds ~/.pms.json; everything else (agents etc.) is added there by the user.
+// $EDITOR is left for the shell to expand at run time.
+func defaultActions(ide string) []Action {
+	return []Action{
+		{Name: "Editor", Keys: []string{"enter", "ctrl+e"}, Run: "${EDITOR:-vi} ."},
+		{Name: "IDE", Keys: []string{"ctrl+shift+e"}, Run: ide + " ."},
+		{Name: "cd", Keys: []string{"alt+enter", "tab"}},
+	}
 }
 
 // getProjects returns all projects
 func (c config) getProjects() []Project {
 	return c.Projects
-}
-
-// getDefaultEditor returns default editor
-func (c config) getDefaultEditor() string {
-	return c.DefaultEditor
 }
 
 // ReadConfig returns go struct of config file at ~/.pms.json
@@ -60,6 +67,15 @@ func ReadConfig() (c config) {
 		return
 	}
 
+	if len(c.Actions) == 0 {
+		editor := c.DefaultEditor
+		if editor == "" {
+			editor = "code"
+		}
+		c.Actions, c.DefaultEditor = defaultActions(editor), ""
+		// persist right away so the actions are there to edit
+		cobra.CheckErr(writeConfig(c))
+	}
 	return c
 }
 
@@ -88,12 +104,7 @@ func UpdateProjectList(projectPath string) error {
 
 	c := ReadConfig()
 	c.Projects = projects
-	byteData, err := json.MarshalIndent(c, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(ConfigPath(), byteData, 0777)
+	return writeConfig(c)
 }
 
 // DeleteProjet deletes JSON representation of project from ~/.pms.json
@@ -109,12 +120,7 @@ func DeleteProjet(projectPath string) error {
 
 	c := ReadConfig()
 	c.Projects = updatedProjects
-	byteData, err := json.MarshalIndent(c, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(ConfigPath(), byteData, 0777)
+	return writeConfig(c)
 }
 
 // AddProject adds JSON representation of new project in ~/.pms.json
@@ -134,11 +140,16 @@ func AddProject(workingPath string) error {
 	}
 
 	c.Projects = append(c.Projects, newProject)
+	return writeConfig(c)
+}
+
+// writeConfig writes JSON representation of the config to ~/.pms.json
+func writeConfig(c config) error {
 	byteData, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(ConfigPath(), byteData, 0777)
+	return os.WriteFile(ConfigPath(), byteData, 0o777)
 }
 
 // ConfigPath returns the path of the config file
