@@ -2,60 +2,48 @@
 
 ![Sample Image](./pms.gif)
 
-**A Raycast-style launcher for your projects: search, then open it in your editor, IDE, any AI agent you configure, or `cd` into it.**
+**A Raycast-style project launcher: fuzzy search your projects, then open one in your editor, IDE or AI agent, or `cd` into it.**
 
-## Installation
-
-### Using Curl
-
-```
- curl -sSfL https://goblin.run/github.com/JammUtkarsh/pms | sh
-```
-
-### With Go Installed 
+## Install
 
 ```bash
+curl -sSfL https://goblin.run/github.com/JammUtkarsh/pms | sh
+# or
 go install github.com/JammUtkarsh/pms@latest
 ```
 
-## Shell integration
-
-A program can't change its parent shell's directory, so add this to `~/.zshrc` (or `~/.bashrc`):
+Then add this to `~/.zshrc` (or `~/.bashrc`) so `cd` works in your current shell. Without it, `cd` opens a subshell.
 
 ```bash
 eval "$(pms init zsh)"
 ```
 
-Now `cd` lands in your current shell, and agents run in your shell inside the project.
-Without it, `cd` opens a subshell in the project instead.
+## Usage
 
-## TUI
+```bash
+pms                          # open the launcher
+pms add [dir...]             # add directories (current one by default)
+pms <git-url> [dir]          # clone and add: into ./, inside existing [dir], or as [dir]
+pms user/repo                # same, from GitHub
+pms gitlab.example.com/g/r   # same, from any other host over https
+```
 
-Just start typing to fuzzy search. Like Raycast, each kind of enter does something different.
-
-Default actions (all rebindable):
+Each project shows its git branch, changed file count and path. Pinned projects stay on top; the rest are ordered by how often and how recently you open them.
 
 | Key | Action |
 | --- | --- |
-| `enter` / `ctrl+e` | `$EDITOR` (falls back to `vi`) |
-| `ctrl+shift+e` | IDE (`code .`) |
+| `enter` / `ctrl+e` | Open in `$EDITOR` (falls back to `vi`) |
+| `ctrl+shift+e` | Open in IDE (`code .`) |
 | `alt+enter` / `tab` | `cd` into the project |
-
-Fixed keys:
-
-| Key | Action |
-| --- | --- |
 | `↑` `↓` / `ctrl+p` `ctrl+n` | Move |
-| `?` | Help: every action, its keys and the config path |
-| `ctrl+t` | Pin / unpin project (pinned stay on top; the rest are ordered by how often and recently you open them) |
-| `ctrl+d` | Remove project from the list |
+| `ctrl+t` | Pin / unpin |
+| `ctrl+d` | Remove from list |
+| `?` | Help |
 | `esc` / `ctrl+c` | Quit |
 
-`shift+enter`, `ctrl+enter` and `ctrl+shift+…` need a terminal with the kitty keyboard protocol (Ghostty, kitty, WezTerm, iTerm2 with CSI u). Elsewhere bind a plain `ctrl+…` key too.
+## Config
 
-### Actions
-
-Actions live in `~/.config/pms/config.json` (or `$XDG_CONFIG_HOME/pms/config.json`; defaults are written on first run, and an old `~/.pms.json` is moved there). `run` is a shell command run inside the project, so `$VARS` expand; an empty `run` just `cd`s. Add your AI agents here:
+`~/.config/pms/config.json` (respects `$XDG_CONFIG_HOME`; an old `~/.pms.json` is moved there). The first three keys above are actions you can rebind or extend, e.g. with AI agents:
 
 ```json
 "actions": [
@@ -63,23 +51,8 @@ Actions live in `~/.config/pms/config.json` (or `$XDG_CONFIG_HOME/pms/config.jso
     { "name": "IDE", "keys": ["ctrl+shift+e"], "run": "code ." },
     { "name": "cd", "keys": ["alt+enter", "tab"], "run": "" },
     { "name": "Claude Code", "keys": ["enter"], "run": "claude" },
-    { "name": "Codex", "keys": ["shift+enter", "ctrl+x"], "run": "codex" },
-    { "name": "OpenCode", "keys": ["ctrl+enter", "ctrl+o"], "run": "opencode" }
+    { "name": "Codex", "keys": ["shift+enter", "ctrl+x"], "run": "codex" }
 ]
 ```
 
-If two actions share a key, the first one wins.
-
-## CLI
-
-- [x] `pms add [dir...]` : adds one or more directories to your projects.
-- [x] `pms <git-url> [dir]` : clones the repo (into current dir, inside an existing `[dir]`, or as `[dir]`) and adds it. Shorthands: `user/repo` for GitHub, `host.tld/user/repo` for any other host (e.g. a self-hosted GitLab).
-<!--
-- [ ] `pms ls`: lists all the projects you have added.
-- [ ] `pms rm [arg]` : removes the  `[arg]` directory.
-- [ ] `pms op [arg]` : opens  `[arg]` directory in default editor.
-- [ ] `pms c [arg]` : changes  to `[arg]` directory.
-- [ ] `pms config -e "vscode"` : sets the default editor.
--->
-
-> `[arg]` would be a string directory. Like `.` *or* `~/code/go/cShare` *or* `/root/go/src/grec` *or* `$GOPATH/ugit`
+`run` is a shell command run inside the project; empty `run` just `cd`s. If two actions share a key, the first wins. `shift+enter`, `ctrl+enter` and `ctrl+shift+…` need a terminal with the kitty keyboard protocol (Ghostty, kitty, WezTerm, iTerm2 with CSI u).
